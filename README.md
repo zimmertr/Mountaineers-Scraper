@@ -1,4 +1,4 @@
-# Mountaineers Scraper
+# Mountaineers Climb Scraper
 
 ## Summary
 
@@ -37,12 +37,12 @@ Parse important information from a list of [Mountaineers.org](https://www.mounta
 8. Update `urls.txt` with a list of the climbs you would like to scrape and parse into the spreadsheet
 9. Run the script
     ```bash
-    docker run --rm \
-    -v $(pwd):/data \
-    mountaineers-scraper \
-    --file /data/urls.txt \
-    --sheet "Mountaineers Trips" \
-    --creds /data/service_account.json
+        docker run --rm \
+        -v $(pwd):/data \
+        $(docker build -q .) \
+        --file /data/urls.txt \
+        --sheet "Mountaineers Trips" \
+        --creds /data/service_account.json
     ```
 10. Review the data collected in Google Sheets. The URL field should be treated as a _primary key_ for the data allowing you to run the script repeatedly across time to update the data. The last column should indicate when the data was last updated.
 
