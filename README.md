@@ -32,7 +32,7 @@ Parse important information from a list of [Mountaineers.org](https://www.mounta
 4. Add a new private key to the service account
 5. Download the key credentials for the service account and name the file `service_account.json` 
 6. Create a new spreadsheet on Google Sheets
-7. Share the spreadsheet with the service account email found in downloaded JSON field: client_email
+7. Share the spreadsheet with the service account email found within the downloaded JSON file: `client_email`
 8. Update `urls.txt` with a list of the climbs you would like to scrape and parse into the spreadsheet
 9. Run the script
     ```bash
