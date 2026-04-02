@@ -2,7 +2,7 @@
 
 ## Summary
 
-Parse important information from a list of [Mountaineers.org](https://www.mountaineers.org/) climb URLs and write the data to Google Sheets
+Parse important information from a list of [Mountaineers.org](https://www.mountaineers.org/activities/activities) climb URLs and write the data to Google Sheets
 
 > ⚠️ **Please use this responsibly and DO NOT abuse their servers with aggressive scraping!** ⚠️
 
