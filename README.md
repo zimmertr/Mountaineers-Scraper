@@ -1,8 +1,8 @@
-# Mountaineers Climb Scraper
+# Mountaineers Activity Scraper
 
 ## Summary
 
-Parse important information from a list of [Mountaineers.org](https://www.mountaineers.org/activities/activities) climb URLs and write the data to Google Sheets
+Parse important information from a list of [Mountaineers.org](https://www.mountaineers.org/activities/activities) activity URLs and write the data to Google Sheets. 
 
 > ⚠️ **Please use this responsibly and DO NOT abuse their servers with aggressive scraping!** ⚠️
 
@@ -39,8 +39,8 @@ The script accepts the following CLI arguments:
 
 ## Instructions for CSV Output (Default)
 
-1. Update `urls.txt` with a list of the climbs you would like to scrape and parse into the CSV file.
-2. Run the script (CSV is now the default output, so --output csv is optional):
+1. Create `urls.txt` with a list of the activities you would like to scrape and parse into the CSV file.
+2. Run the script with Docker:
 
 ```bash
 docker run --rm \
@@ -63,8 +63,8 @@ docker run --rm \
 5. Download the key credentials for the service account and name the file `service_account.json` 
 6. Create a new spreadsheet on Google Sheets
 7. Share the spreadsheet with the service account email found within the downloaded JSON file: `client_email`
-8. Update `urls.txt` with a list of the climbs you would like to scrape and parse into the spreadsheet
-9. Run the script:
+8. Update `urls.txt` with a list of the activities you would like to scrape and parse into the spreadsheet
+9. Run the script with Docker:
 
 ```bash
 docker run --rm \
@@ -81,21 +81,21 @@ docker run --rm \
 
 ## Useful Conditional Formatting rules:
 
-1. Mark all FULL climbs as red:
+1. Mark all FULL activities as red:
     ```
     Apply to Range: A2:Z995
     Format rules if: Custom formula is
     =ISNUMBER(SEARCH("FULL",$M2))
     ```
 
-2. Mark all open registration climbs as blue
+2. Mark all open registration activities as blue
     ```
     Apply to Range: A2:Z995
     Format rules if: Custom formula is
     =DATEVALUE(TRIM(MID($H2,6,FIND(" at",$H2)-6))) <= TODAY()
     ```
 
-3. Mark all Foothills climbs as green
+3. Mark all Foothills activities as green
     ```
     Apply to Range: A2:Z995
     Format rules if: Custom formula is

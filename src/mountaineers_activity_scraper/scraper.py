@@ -2,11 +2,11 @@ import argparse
 import requests
 import csv
 import os
-from sheet_manager import SheetManager
+from .sheet_manager import SheetManager
 import time
 from datetime import datetime
-from date_utils import DateFormatter
-from scraper_utils import Scraper
+from .date_utils import DateFormatter
+from .scraper_utils import Scraper
 
 
 def read_urls(filename):
@@ -51,8 +51,6 @@ def build_row(html, url):
         scraper.scrape_from_ul_details("Availability", tag_type="label", extract_tag="span"),
         scraper.scrape_element_text("div", "content-text", find_child="div", skip_label=True)
     ]
-
-
 
 
 def parse_args():

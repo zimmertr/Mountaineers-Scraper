@@ -21,8 +21,8 @@ class DateFormatter:
                 except Exception:
                     continue
             return s  # fallback: return as-is if parsing fails
-        if '—' in date_str:
-            parts = date_str.split('—')
+        if '\u2014' in date_str:
+            parts = date_str.split('\u2014')
             start_raw = clean_date(parts[0])
             end_raw = clean_date(parts[1])
             return (to_mmddyyyy(start_raw), to_mmddyyyy(end_raw))
