@@ -5,6 +5,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import time
 from datetime import datetime
+import re
 
 
 def scrape_element_text(soup, element, class_name=None, find_child=None, skip_label=False):
@@ -106,9 +107,20 @@ def write_row(ws, row_data, url_to_row):
     url = row_data[0]
     last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     row_data_with_ts = row_data + [last_updated]
+    # Dynamically calculate the correct range
+    def col_letter(n):
+        result = ''
+        while n > 0:
+            n, rem = divmod(n - 1, 26)
+            result = chr(65 + rem) + result
+        return result
+    num_cols = len(row_data_with_ts)
+    start_col = 2  # B
+    end_col = num_cols  # e.g., Q for 17 columns
+    range_str = f"{col_letter(start_col)}{{row}}:{col_letter(end_col)}{{row}}"
     if url in url_to_row:
         row_num = url_to_row[url]
-        ws.update(f"B{row_num}:P{row_num}", [row_data_with_ts[1:]])
+        ws.update(range_str.format(row=row_num), [row_data_with_ts[1:]])
         print(f"Updated: {url} at {last_updated}", flush=True)
     else:
         ws.append_row(row_data_with_ts)
@@ -119,6 +131,111 @@ def write_row(ws, row_data, url_to_row):
         for idx, row in enumerate(all_rows[1:], start=2):
             if row:
                 url_to_row[row[0]] = idx
+
+
+def parse_dates(date_str):
+    """
+    Parse a date string that may be a single date or a range, and return (start, end) in MM/DD/YYYY format.
+    If only one date, end is empty string.
+    """
+    from datetime import datetime
+    if not date_str:
+        return ("", "")
+    def clean_date(s):
+        s = s.strip()
+        s = re.sub(r"^[A-Za-z]{3,}, ", "", s)
+        return s
+    def to_mmddyyyy(s):
+        for fmt in ("%b %d, %Y", "%B %d, %Y"):
+            try:
+                return datetime.strptime(s, fmt).strftime("%m/%d/%Y")
+            except Exception:
+                continue
+        return s  # fallback: return as-is if parsing fails
+    if '—' in date_str:
+        parts = date_str.split('—')
+        start_raw = clean_date(parts[0])
+        end_raw = clean_date(parts[1])
+        return (to_mmddyyyy(start_raw), to_mmddyyyy(end_raw))
+    else:
+        raw = clean_date(date_str)
+        return (to_mmddyyyy(raw), "")
+
+
+def format_registration_open(date_str):
+    """
+    Convert 'Sat, Feb 21, 2026 at 6:53 AM' to 'MM/DD/YYYY - HH:MM'.
+    If parsing fails, return the original string.
+    """
+    from datetime import datetime
+    if not date_str:
+        return ""
+    # Remove day of week
+    import re
+    s = date_str.strip()
+    s = re.sub(r"^[A-Za-z]{3,}, ", "", s)
+    # Try to parse
+    for fmt in ("%b %d, %Y at %I:%M %p", "%B %d, %Y at %I:%M %p"):
+        try:
+            dt = datetime.strptime(s, fmt)
+            return dt.strftime("%m/%d/%Y - %H:%M")
+        except Exception:
+            continue
+    return date_str
+
+
+def format_registration_date(date_str):
+    """
+    Convert 'Sat, Feb 21, 2026 at 6:53 AM' or 'Sat, Feb 21, 2026' to 'MM/DD/YYYY'.
+    If parsing fails, return the original string.
+    """
+    from datetime import datetime
+    if not date_str:
+        return ""
+    import re
+    s = date_str.strip()
+    s = re.sub(r"^[A-Za-z]{3,}, ", "", s)
+    # Try to parse with and without time
+    for fmt in ("%b %d, %Y at %I:%M %p", "%B %d, %Y at %I:%M %p", "%b %d, %Y", "%B %d, %Y"):
+        try:
+            return datetime.strptime(s, fmt).strftime("%m/%d/%Y")
+        except Exception:
+            continue
+    return date_str
+
+
+def build_row(soup, url):
+    raw_name = scrape_element_text(soup, "h1")
+    type_name = ""
+    clean_name = raw_name
+    if " - " in raw_name:
+        type_name, clean_name = raw_name.split(" - ", 1)
+    date_str = scrape_date_range(soup)
+    start_date, end_date = parse_dates(date_str)
+    reg_open = scrape_from_ul_details(soup, "Registration Open", tag_type="label")
+    reg_open_fmt = format_registration_open(reg_open)
+    reg_closed = scrape_from_ul_details(soup, "Registration Closed", tag_type="label")
+    reg_closed_fmt = format_registration_open(reg_closed)
+    reg_nonpriority = scrape_from_ul_details(soup, "Non-Priority Registration Open", tag_type="label")
+    reg_nonpriority_fmt = format_registration_date(reg_nonpriority)
+    return [
+        url,
+        type_name,
+        clean_name,
+        scrape_element_text(soup, "p", "documentDescription"),
+        scrape_primary_leader(soup),
+        start_date,
+        end_date,
+        scrape_from_ul_details(soup, "Committee", tag_type="label", extract_tag="a"),
+        reg_open_fmt,
+        reg_nonpriority_fmt,
+        reg_closed_fmt,
+        scrape_from_ul_details(soup, "Mileage", tag_type="strong", extract_tag="span"),
+        scrape_from_ul_details(soup, "Elevation Gain", tag_type="strong", extract_tag="span"),
+        scrape_from_ul_details(soup, "Availability", tag_type="label").split("(")[0].strip(),
+        scrape_from_ul_details(soup, "Availability", tag_type="label", extract_tag="span"),
+        scrape_element_text(soup, "div", "content-text", find_child="div", skip_label=True)
+    ]
 
 
 def main():
@@ -139,10 +256,12 @@ def main():
     client = gspread.authorize(creds)
     ws = client.open(args.sheet).sheet1
 
-    HEADERS = ["URL", "Type", "Name", "Description", "Leader", "Date(s)", "Committee",
-               "Registration Open", "Non-Priority Registration Open", "Registration Closed",
-               "Mileage", "Elevation Gain", "Availability", "Capacity", "Leader's Notes",
-               "Last Updated (UTC)"]
+    HEADERS = [
+        "URL", "Type", "Name", "Description", "Leader", "Start Date", "End Date", "Committee",
+        "Registration Open", "Non-Priority Registration Open", "Registration Closed",
+        "Mileage", "Elevation Gain", "Availability", "Capacity", "Leader's Notes",
+        "Last Updated (UTC)"
+    ]
 
     # Ensure header exists
     all_rows = ws.get_all_values()
@@ -160,29 +279,7 @@ def main():
             resp.raise_for_status()
             soup = BeautifulSoup(resp.text, "html.parser")
 
-            raw_name = scrape_element_text(soup, "h1")
-            type_name = ""
-            clean_name = raw_name
-            if " - " in raw_name:
-                type_name, clean_name = raw_name.split(" - ", 1)
-
-            row_data = [
-                url,
-                type_name,
-                clean_name,
-                scrape_element_text(soup, "p", "documentDescription"),
-                scrape_primary_leader(soup),
-                scrape_date_range(soup),
-                scrape_from_ul_details(soup, "Committee", tag_type="label", extract_tag="a"),
-                scrape_from_ul_details(soup, "Registration Open", tag_type="label"),
-                scrape_from_ul_details(soup, "Non-Priority Registration Open", tag_type="label"),
-                scrape_from_ul_details(soup, "Registration Closed", tag_type="label"),
-                scrape_from_ul_details(soup, "Mileage", tag_type="strong", extract_tag="span"),
-                scrape_from_ul_details(soup, "Elevation Gain", tag_type="strong", extract_tag="span"),
-                scrape_from_ul_details(soup, "Availability", tag_type="label").split("(")[0].strip(),
-                scrape_from_ul_details(soup, "Availability", tag_type="label", extract_tag="span"),
-                scrape_element_text(soup, "div", "content-text", find_child="div", skip_label=True)
-            ]
+            row_data = build_row(soup, url)
 
             write_row(ws, row_data, url_to_row)
             time.sleep(1)  # rate limit
