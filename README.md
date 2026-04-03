@@ -22,7 +22,37 @@ Parse important information from a list of [Mountaineers.org](https://www.mounta
     </center>
 </p>
 
-## Instructions
+
+## Configuration
+
+The script accepts the following CLI arguments:
+
+| Argument              | Required? | Description                                                                                 |
+|-----------------------|-----------|---------------------------------------------------------------------------------------------|
+| --file                | Yes       | Path to the text file containing a list of URLs to scrape                                    |
+| --output              | No        | Output destination: `csv` (default) or `google-sheets`                                      |
+| --output-file-name    | No        | Output CSV file name (default: `output.csv`)                                                 |
+| --sheet               | Yes*      | Google Sheet name (required if `--output google-sheets`)                                     |
+| --creds               | Yes*      | Path to Google service account JSON file (required if `--output google-sheets`)              |
+
+
+
+## Instructions for CSV Output (Default)
+
+1. Update `urls.txt` with a list of the climbs you would like to scrape and parse into the CSV file.
+2. Run the script (CSV is now the default output, so --output csv is optional):
+
+```bash
+docker run --rm \
+    -v $(pwd):/data \
+    $(docker build -q .) \
+    --file /data/urls.txt \
+    --output-file-name /data/output.csv
+```
+
+3. Review the generated CSV file. The last column indicates when the data was last updated.
+
+## Instructions for Google Sheets Output
 
 1. Create a Google Cloud account & project: https://console.cloud.google.com/
 2. Enable the Google Sheets & Drive APIs for the project. Both APIs are free to use within quota restrictions for which this script should abide. 
@@ -34,16 +64,20 @@ Parse important information from a list of [Mountaineers.org](https://www.mounta
 6. Create a new spreadsheet on Google Sheets
 7. Share the spreadsheet with the service account email found within the downloaded JSON file: `client_email`
 8. Update `urls.txt` with a list of the climbs you would like to scrape and parse into the spreadsheet
-9. Run the script
-    ```bash
-    docker run --rm \
+9. Run the script:
+
+```bash
+docker run --rm \
     -v $(pwd):/data \
     $(docker build -q .) \
     --file /data/urls.txt \
+    --output google-sheets \
     --sheet "Mountaineers Trips" \
     --creds /data/service_account.json
-    ```
-10. Review the data collected in Google Sheets. The URL field should be treated as a _primary key_ for the data allowing you to run the script repeatedly across time to update the data. The last column should indicate when the data was last updated.
+```
+
+10. Review the data collected in Google Sheets. The last column indicates when the data was last updated.
+
 
 ## Useful Conditional Formatting rules:
 

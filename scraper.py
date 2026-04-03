@@ -1,5 +1,7 @@
 import argparse
 import requests
+import csv
+import os
 from sheet_manager import SheetManager
 import time
 from datetime import datetime
@@ -51,38 +53,76 @@ def build_row(html, url):
     ]
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Scrape trip data and write to Google Sheet")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Scrape trip data and output to Google Sheet or CSV")
     parser.add_argument("--file", required=True, help="Text file with URLs")
-    parser.add_argument("--sheet", required=True, help="Google Sheet name")
-    parser.add_argument("--creds", required=True, help="Service account JSON file")
-    args = parser.parse_args()
+    parser.add_argument("--output", choices=["csv", "google-sheets"], default="csv", help="Output destination: csv (default) or google-sheets")
+    parser.add_argument("--output-file-name", default="output.csv", help="CSV output file name (default: output.csv)")
+    parser.add_argument("--sheet", help="Google Sheet name (required if output is google-sheets)")
+    parser.add_argument("--creds", help="Service account JSON file (required if output is google-sheets)")
+    return parser.parse_args()
 
-    urls = read_urls(args.file)
-    if not urls:
-        print("No URLs found", flush=True)
-        return
-
-
-    HEADERS = [
-        "URL", "Type", "Name", "Description", "Leader", "Start Date", "End Date", "Committee",
-        "Registration Open", "Non-Priority Registration Open", "Registration Closed",
-        "Mileage", "Elevation Gain", "Availability", "Capacity", "Leader's Notes",
-        "Last Updated (UTC)"
-    ]
-    sheet_manager = SheetManager(args.sheet, args.creds, HEADERS)
-
+def collect_rows(urls, headers):
+    rows = []
     for idx, url in enumerate(urls, start=1):
         print(f"[{idx}/{len(urls)}] Processing: {url}", flush=True)
         try:
             resp = requests.get(url, timeout=10)
             resp.raise_for_status()
             row_data = build_row(resp.text, url)
-            sheet_manager.write_row(row_data)
-            time.sleep(1)  # rate limit
+            last_updated = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            row_data.append(last_updated)
+            rows.append(row_data)
         except Exception as e:
             print(f"Failed to process {url}: {e}", flush=True)
+    return rows
 
+def write_csv(csv_path, headers, rows):
+    with open(csv_path, "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(headers)
+        writer.writerows(rows)
+    print(f"CSV written to {csv_path}")
+
+def upload_to_sheets(sheet_name, creds, headers, rows):
+    sheet_manager = SheetManager(sheet_name, creds, headers)
+    sheet_manager.ws.clear()
+    sheet_manager.ws.append_row(headers)
+    if rows:
+        start_col = 1  # A
+        end_col = len(headers)
+        def col_letter(n):
+            result = ''
+            while n > 0:
+                n, rem = divmod(n - 1, 26)
+                result = chr(65 + rem) + result
+            return result
+        range_str = f"{col_letter(start_col)}2:{col_letter(end_col)}{len(rows)+1}"
+        values = rows
+        sheet_manager.ws.update(range_str, values)
+        print(f"Uploaded {len(rows)} rows to Google Sheet '{sheet_name}'")
+
+def main():
+    args = parse_args()
+    urls = read_urls(args.file)
+    if not urls:
+        print("No URLs found", flush=True)
+        return
+    HEADERS = [
+        "URL", "Type", "Name", "Description", "Leader", "Start Date", "End Date", "Committee",
+        "Registration Open", "Non-Priority Registration Open", "Registration Closed",
+        "Mileage", "Elevation Gain", "Availability", "Capacity", "Leader's Notes",
+        "Last Updated (UTC)"
+    ]
+    rows = collect_rows(urls, HEADERS)
+    write_csv(args.output_file_name, HEADERS, rows)
+    if args.output == "google-sheets":
+        if not args.sheet or not args.creds:
+            print("--sheet and --creds are required for Google Sheets output", flush=True)
+            return
+        upload_to_sheets(args.sheet, args.creds, HEADERS, rows)
 
 if __name__ == "__main__":
     main()
