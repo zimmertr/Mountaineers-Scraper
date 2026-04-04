@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/mountaineers_activity_scraper /app/mountaineers_activity_scraper
 
-ENTRYPOINT ["python3", "-m", "mountaineers_activity_scraper.scraper"]
+ENTRYPOINT ["python3", "-m", "mountaineers_activity_scraper.cli"]

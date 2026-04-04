@@ -60,9 +60,10 @@ def parse_args():
     parser.add_argument("--output-file-name", default="output.csv", help="CSV output file name (default: output.csv)")
     parser.add_argument("--sheet", help="Google Sheet name (required if output is google-sheets or both)")
     parser.add_argument("--creds", help="Service account JSON file (required if output is google-sheets or both)")
+    parser.add_argument("--delay", type=float, default=1.0, help="Delay between requests (seconds)")
     return parser.parse_args()
 
-def collect_rows(urls, headers):
+def collect_rows(urls, headers, delay=1.0):
     rows = []
     for idx, url in enumerate(urls, start=1):
         print(f"[{idx}/{len(urls)}] Processing: {url}", flush=True)
@@ -75,6 +76,7 @@ def collect_rows(urls, headers):
             rows.append(row_data)
         except Exception as e:
             print(f"Failed to process {url}: {e}", flush=True)
+        time.sleep(delay)
     return rows
 
 def write_csv(csv_path, headers, rows):
@@ -117,7 +119,7 @@ def main():
         "Mileage", "Elevation Gain", "Availability", "Capacity", "Leader's Notes",
         "Last Updated (UTC)"
     ]
-    rows = collect_rows(urls, HEADERS)
+    rows = collect_rows(urls, HEADERS, delay=args.delay)
     if args.output in ("csv", "both"):
         write_csv(args.output_file_name, HEADERS, rows)
     if args.output in ("google-sheets", "both"):
