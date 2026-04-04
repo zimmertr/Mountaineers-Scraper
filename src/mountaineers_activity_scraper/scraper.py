@@ -55,9 +55,9 @@ def build_row(html, url):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Scrape trip data and output to Google Sheet and/or CSV")
-    parser.add_argument("--file", required=True, help="Text file with URLs")
-    parser.add_argument("--output", choices=["csv", "google-sheets", "both"], default="csv", help="Output destination: csv (default), google-sheets, or both")
-    parser.add_argument("--output-file-name", default="output.csv", help="CSV output file name (default: output.csv)")
+    parser.add_argument("--output-destination", choices=["csv", "google-sheets", "both"], default="csv", help="Output destination: csv (default), google-sheets, or both")
+    parser.add_argument("--input-urls-filename", required=True, help="Text file with URLs")
+    parser.add_argument("--output-filename", default="output.csv", help="Output file name for output (default: output.csv)")
     parser.add_argument("--sheet", help="Google Sheet name (required if output is google-sheets or both)")
     parser.add_argument("--creds", help="Service account JSON file (required if output is google-sheets or both)")
     parser.add_argument("--delay", type=float, default=1.0, help="Delay between requests (seconds)")
@@ -106,10 +106,10 @@ def upload_to_sheets(sheet_name, creds, headers, rows):
 
 def main():
     args = parse_args()
-    if args.output in ("google-sheets", "both") and (not args.sheet or not args.creds):
+    if args.output_destination in ("google-sheets", "both") and (not args.sheet or not args.creds):
         print("--sheet and --creds are required for Google Sheets output", flush=True)
         return
-    urls = read_urls(args.file)
+    urls = read_urls(args.input_urls_filename)
     if not urls:
         print("No URLs found", flush=True)
         return
@@ -120,9 +120,10 @@ def main():
         "Last Updated (UTC)"
     ]
     rows = collect_rows(urls, HEADERS, delay=args.delay)
-    if args.output in ("csv", "both"):
-        write_csv(args.output_file_name, HEADERS, rows)
-    if args.output in ("google-sheets", "both"):
+    output_path = args.output_filename
+    if args.output_destination in ("csv", "both"):
+        write_csv(output_path, HEADERS, rows)
+    if args.output_destination in ("google-sheets", "both"):
         upload_to_sheets(args.sheet, args.creds, HEADERS, rows)
 
 if __name__ == "__main__":

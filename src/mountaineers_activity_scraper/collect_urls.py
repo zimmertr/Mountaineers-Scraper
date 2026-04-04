@@ -42,7 +42,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Collect Mountaineers activity URLs with flexible filters.")
     for arg, param in FILTER_MAP.items():
         parser.add_argument(f'--{arg.replace("_", "-")}', type=str, help=f"Comma-separated list for {param}")
-    parser.add_argument('--output', type=str, default='urls.txt', help='Output file for URLs (default: urls.txt)')
+    parser.add_argument('--output-filename', type=str, default='urls.txt', help='Output file name for output (default: urls.txt)')
     parser.add_argument('--delay', type=float, default=0.5, help='Delay between requests (seconds)')
     return parser.parse_args()
 
@@ -93,10 +93,11 @@ def main():
         all_links.update(filtered_links)
         b_start += 20
         time.sleep(args.delay)
-    with open(args.output, 'w') as f:
+    output_path = args.output_filename
+    with open(output_path, 'w') as f:
         for link in sorted(all_links):
             f.write(link + '\n')
-    print(f"Wrote {len(all_links)} URLs to {args.output}")
+    print(f"Wrote {len(all_links)} URLs to {output_path}")
 
 if __name__ == "__main__":
     main()

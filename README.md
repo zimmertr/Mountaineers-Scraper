@@ -17,15 +17,16 @@ Mountaineers Activity Scraper can be used to collect and parse activity data fro
 ### 1. Collect Activity URLs
 
 ```bash
-# Collect all `Climbing` activites hosted by the `Seattle` branch. 
+# Collect all `Climbing` `Trip` activities under the `Basic Alpine` and `Rock Climb` categories
 # See Collection Filters below for configuration
 docker run --rm \
     -v $(pwd):/data \
     $(docker build -q .) \
     --mode collect \
-    --filter-branch Seattle \
     --filter-activity Climbing \
-    --output /data/urls_seattle_climbing.txt
+    --filter-type Trip \
+    --filter-climbing-category "Basic Alpine","Rock Climb" \
+    --output-filename /data/urls_climbing.txt
 ```
 
 ### 2. Scrape Activity Data to CSV
@@ -35,9 +36,9 @@ docker run --rm \
     -v $(pwd):/data \
     $(docker build -q .) \
     --mode scrape \
-    --file /data/urls_seattle_climbing.txt \
-    --output csv \
-    --output-file-name /data/output.csv
+    --input-urls-filename /data/urls_climbing.txt \
+    --output-destination csv \
+    --output-filename /data/output_climbing.csv
 ```
 
 ### 3. Scrape Activity Data to Google Sheets
@@ -48,8 +49,8 @@ docker run --rm \
     -v $(pwd):/data \
     $(docker build -q .) \
     --mode scrape \
-    --file /data/urls_seattle_climbing.txt \
-    --output google-sheets \
+    --input-urls-filename /data/urls_climbing.txt \
+    --output-destination google-sheets \
     --sheet "Mountaineers Trips" \
     --creds /data/google_cloud_credentials.json
 ```
@@ -57,14 +58,14 @@ docker run --rm \
 ## Arguments
 
 | Argument              | Required? | Description                                                                                 |
-|-----------------------|-----------|---------------------------------------------------------------------------------------------|
-| --mode                | Yes       | `collect` to gather a list of URLs, `scrape` to parse activity data from a list of URLs                                   |
-| --output              | Yes*      | In `collect` mode: output file path for URLs. In `scrape` mode: output format (`csv`, `google-sheets`, or `both`) |
-| --file                | Yes*      | A file containing a list of URLs to scrape (required for `scrape` mode)                                 |
-| --output-file-name    | No        | Output CSV file name (default: `output.csv`)                                                |                                                    |
-| --sheet               | Yes*      | Google Sheet name (required if `--output google-sheets`)                                    |
-| --creds               | Yes*      | Path to a JSON file containing Google Cloud Service Account credentials (required if `--output google-sheets`)             |
-| --delay               | No        | Delay between requests in seconds (default: 1 second)                                            |
+|-----------------------------|-----------|---------------------------------------------------------------------------------------------|
+| --mode                      | Yes       | `collect` to gather a list of URLs, `scrape` to parse activity data from a list of URLs     |
+| --output-destination        | Yes*      | Output destination: `csv`, `google-sheets`, or `both`                                      |
+| --output-filename           | No        | Output file name (default: `urls.txt` for collect mode, `output.csv` for scrape mode) |
+| --input-urls-filename       | Yes*      | A file containing a list of URLs to scrape (required for `scrape` mode)                     |
+| --sheet                     | Yes*      | Google Sheet name (required if `--output-destination google-sheets`)                                    |
+| --creds                     | Yes*      | Path to a JSON file containing Google Cloud Service Account credentials (required if `--output-destination google-sheets`) |
+| --delay                     | No        | Delay between requests in seconds (default: 1 second)                                       |
 
 ## Collection Filters
 The following filters are available for use with `--mode collect`:
@@ -89,7 +90,7 @@ docker run --rm \
     --filter-activity Climbing,Scrambling \
     --filter-branch Seattle,Foothills \
     --filter-type Trip \
-    --output /data/urls.txt
+    --output-filename urls.txt
 ```
 
 ## Google Sheets Setup
