@@ -27,6 +27,18 @@ from bs4 import BeautifulSoup
 import time
 
 BASE_URL = "https://www.mountaineers.org/activities/activities/@@faceted_query"
+DEFAULT_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.mountaineers.org/activities/activities/",
+    "Connection": "keep-alive",
+}
+
+def build_session():
+    session = requests.Session()
+    session.headers.update(DEFAULT_HEADERS)
+    return session
 
 FILTER_MAP = {
     'filter_activity': 'c4',
@@ -74,13 +86,15 @@ def main():
     filter_type = getattr(args, 'filter_type', None)
     allowed_prefixes = get_allowed_prefixes(filter_type)
 
+    session = build_session()
     while True:
         query_params = [("b_start", str(b_start))] + params
         url = BASE_URL
         print(f"Fetching: {url} with params: {query_params}")
-        resp = requests.get(url, params=query_params)
+        resp = session.get(url, params=query_params, timeout=10)
         if resp.status_code != 200:
             print(f"Failed to fetch {url} (status {resp.status_code})")
+            print(resp.text[:500].replace('\n', ' '))
             break
         links = get_activity_links(resp.text)
         # Filter links by allowed prefixes

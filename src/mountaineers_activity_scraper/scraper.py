@@ -8,6 +8,19 @@ from datetime import datetime
 from .date_utils import DateFormatter
 from .scraper_utils import Scraper
 
+DEFAULT_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.mountaineers.org/activities/activities/",
+    "Connection": "keep-alive",
+}
+
+def build_session():
+    session = requests.Session()
+    session.headers.update(DEFAULT_HEADERS)
+    return session
+
 
 def read_urls(filename):
     try:
@@ -65,10 +78,11 @@ def parse_args():
 
 def collect_rows(urls, headers, delay=1.0):
     rows = []
+    session = build_session()
     for idx, url in enumerate(urls, start=1):
         print(f"[{idx}/{len(urls)}] Processing: {url}", flush=True)
         try:
-            resp = requests.get(url, timeout=10)
+            resp = session.get(url, timeout=10)
             resp.raise_for_status()
             row_data = build_row(resp.text, url)
             last_updated = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -76,6 +90,8 @@ def collect_rows(urls, headers, delay=1.0):
             rows.append(row_data)
         except Exception as e:
             print(f"Failed to process {url}: {e}", flush=True)
+            if hasattr(e, 'response') and e.response is not None:
+                print(e.response.text[:500].replace('\n', ' '), flush=True)
         time.sleep(delay)
     return rows
 
